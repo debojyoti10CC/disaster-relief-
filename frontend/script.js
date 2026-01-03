@@ -36,47 +36,56 @@ class DisasterManagementUI {
         try {
             this.addLog('info', 'CHECKING BACKEND CONNECTION...');
             
-            const response = await fetch(`${this.apiBase}/api/status`);
-            if (response.ok) {
-                const data = await response.json();
-                this.isBackendConnected = true;
-                
-                // Update mode indicator
-                const modeDisplay = document.getElementById('mode-display');
-                const modeText = document.getElementById('mode-text');
-                
-                if (data.mode === 'vercel_demo') {
-                    modeDisplay.className = 'mode-display demo-mode';
-                    modeText.textContent = 'VERCEL DEMO MODE - SIMULATED TRANSACTIONS';
-                    this.addLog('info', 'CONNECTED TO VERCEL DEMO SYSTEM');
-                    this.addLog('warning', 'THIS IS A DEMO - NO REAL BLOCKCHAIN TRANSACTIONS');
-                    this.addLog('info', 'FOR REAL TRANSACTIONS, USE DOCKER OR HEROKU DEPLOYMENT');
-                } else {
-                    modeDisplay.className = 'mode-display real-mode';
-                    modeText.textContent = 'REAL TRANSACTION MODE ACTIVE';
-                    // Show warning
-                    document.getElementById('real-transaction-warning').style.display = 'block';
-                    this.addLog('info', 'CONNECTED TO REAL DISASTER MANAGEMENT SYSTEM');
-                    this.addLog('warning', 'REAL BLOCKCHAIN TRANSACTIONS ENABLED');
-                    this.addLog('error', 'THIS WILL SPEND ACTUAL ETH FROM YOUR WALLET!');
+            // For Vercel static deployment, we'll run in demo mode
+            if (window.location.hostname.includes('vercel.app') || window.location.hostname.includes('localhost')) {
+                // Try to connect to API, but fallback to demo mode
+                try {
+                    const response = await fetch(`${this.apiBase}/api/status`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.isBackendConnected = true;
+                        
+                        // Update mode indicator based on response
+                        const modeDisplay = document.getElementById('mode-display');
+                        const modeText = document.getElementById('mode-text');
+                        
+                        if (data.mode === 'vercel_demo') {
+                            modeDisplay.className = 'mode-display demo-mode';
+                            modeText.textContent = 'VERCEL DEMO MODE - SIMULATED TRANSACTIONS';
+                            this.addLog('info', 'CONNECTED TO VERCEL DEMO SYSTEM');
+                            this.addLog('warning', 'THIS IS A DEMO - NO REAL BLOCKCHAIN TRANSACTIONS');
+                        } else {
+                            modeDisplay.className = 'mode-display real-mode';
+                            modeText.textContent = 'REAL TRANSACTION MODE ACTIVE';
+                            document.getElementById('real-transaction-warning').style.display = 'block';
+                            this.addLog('info', 'CONNECTED TO REAL DISASTER MANAGEMENT SYSTEM');
+                            this.addLog('warning', 'REAL BLOCKCHAIN TRANSACTIONS ENABLED');
+                            this.addLog('error', 'THIS WILL SPEND ACTUAL ETH FROM YOUR WALLET!');
+                        }
+                        
+                        this.updateRealSystemStatus(data);
+                        return;
+                    }
+                } catch (apiError) {
+                    console.log('API not available, falling back to demo mode');
                 }
-                
-                // Update UI with status
-                this.updateRealSystemStatus(data);
-            } else {
-                throw new Error('Backend not available');
             }
+            
+            // Fallback to demo mode
+            throw new Error('Backend not available');
+            
         } catch (error) {
             this.isBackendConnected = false;
             
-            // Update mode indicator
+            // Update mode indicator for demo
             const modeDisplay = document.getElementById('mode-display');
             const modeText = document.getElementById('mode-text');
             modeDisplay.className = 'mode-display demo-mode';
-            modeText.textContent = 'DEMO MODE - NO REAL TRANSACTIONS';
+            modeText.textContent = 'STATIC DEMO MODE - SIMULATED TRANSACTIONS';
             
-            this.addLog('warning', 'BACKEND NOT AVAILABLE - RUNNING IN DEMO MODE');
-            this.addLog('info', 'RUN "PYTHON APP.PY" FOR REAL TRANSACTIONS');
+            this.addLog('info', 'RUNNING IN STATIC DEMO MODE');
+            this.addLog('warning', 'THIS IS A FRONTEND-ONLY DEMO');
+            this.addLog('info', 'FOR REAL TRANSACTIONS, USE DOCKER OR HEROKU DEPLOYMENT');
             this.simulateSystemStartup();
         }
     }
@@ -190,8 +199,8 @@ class DisasterManagementUI {
 
     async runRealDisasterTest() {
         if (!this.isBackendConnected) {
-            this.addLog('error', 'BACKEND NOT CONNECTED - CANNOT RUN REAL TEST');
-            return;
+            // Run demo version
+            return this.runDemoDisasterTest();
         }
 
         this.addLog('info', 'STARTING REAL DISASTER DETECTION TEST...');
@@ -230,11 +239,34 @@ class DisasterManagementUI {
         }
     }
 
+    async runDemoDisasterTest() {
+        this.addLog('info', 'STARTING DEMO DISASTER DETECTION TEST...');
+        
+        // Reset card statuses
+        this.updateCardStatus('detect', 'processing', 'PROCESSING DEMO TEST IMAGE...');
+        this.updateCardStatus('verify', 'waiting', 'WAITING FOR DETECTION...');
+        this.updateCardStatus('disburse', 'waiting', 'WAITING FOR VERIFICATION...');
+        this.updateCardStatus('audit', 'waiting', 'WAITING FOR TRANSACTION...');
+
+        await this.delay(2000);
+
+        // Generate random demo results
+        const disasterTypes = ['FIRE', 'FLOOD', 'EARTHQUAKE', 'CASUALTY'];
+        const disasterType = disasterTypes[Math.floor(Math.random() * disasterTypes.length)];
+        const confidence = Math.floor(Math.random() * 15) + 85; // 85-100%
+        
+        this.updateCardStatus('detect', 'completed', 
+            `DEMO DISASTER DETECTED: ${disasterType} (${confidence}% CONFIDENCE)`);
+        
+        this.addLog('info', `DEMO DISASTER DETECTED: ${disasterType} (${confidence}% CONFIDENCE)`);
+        this.stats.disasters++;
+        this.updateStats();
+    }
+
     async runRealFullSystemTest() {
         if (!this.isBackendConnected) {
-            this.addLog('error', 'BACKEND NOT CONNECTED - CANNOT RUN REAL TEST');
-            this.addLog('info', 'RUN "PYTHON APP.PY" TO ENABLE REAL TRANSACTIONS');
-            return;
+            // Run demo version
+            return this.runDemoFullSystemTest();
         }
 
         this.addLog('info', 'STARTING REAL FULL SYSTEM TEST...');
@@ -318,6 +350,75 @@ class DisasterManagementUI {
         } catch (error) {
             this.addLog('error', `REAL SYSTEM TEST FAILED: ${error.message}`);
         }
+    }
+
+    async runDemoFullSystemTest() {
+        this.addLog('info', 'STARTING DEMO FULL SYSTEM TEST...');
+        this.addLog('warning', 'THIS IS A SIMULATION - NO REAL TRANSACTIONS');
+        
+        // Reset all card statuses
+        this.updateCardStatus('detect', 'processing', 'PROCESSING DEMO DISASTER DETECTION...');
+        this.updateCardStatus('verify', 'waiting', 'WAITING FOR DETECTION...');
+        this.updateCardStatus('disburse', 'waiting', 'WAITING FOR VERIFICATION...');
+        this.updateCardStatus('audit', 'waiting', 'WAITING FOR TRANSACTION...');
+
+        // Step 1: Demo Detection
+        await this.delay(2000);
+        
+        const disasterTypes = ['FIRE', 'FLOOD', 'EARTHQUAKE', 'CASUALTY'];
+        const disasterType = disasterTypes[Math.floor(Math.random() * disasterTypes.length)];
+        const confidence = Math.floor(Math.random() * 15) + 85;
+        
+        this.updateCardStatus('detect', 'completed', 
+            `DEMO DISASTER DETECTED: ${disasterType} (${confidence}% CONFIDENCE)`);
+        
+        this.addLog('info', `DEMO DISASTER DETECTED: ${disasterType}`);
+        this.stats.disasters++;
+        
+        await this.delay(1000);
+        
+        // Step 2: Demo Verification
+        this.updateCardStatus('verify', 'processing', 'RUNNING DEMO DISASTER VERIFICATION...');
+        this.addLog('info', 'RUNNING DEMO DISASTER VERIFICATION...');
+        
+        await this.delay(2000);
+        
+        const verificationScore = Math.floor(Math.random() * 35) + 60; // 60-95
+        const humanImpact = Math.floor(Math.random() * 450) + 50; // 50-500
+        
+        this.updateCardStatus('verify', 'completed', 
+            `DEMO VERIFICATION PASSED: ${verificationScore}/100 - ${humanImpact} PEOPLE AFFECTED`);
+        
+        this.addLog('info', `DEMO VERIFICATION PASSED: ${verificationScore}/100`);
+        this.stats.verified++;
+        
+        await this.delay(1000);
+        
+        // Step 3: Demo Transaction
+        this.updateCardStatus('disburse', 'processing', 'EXECUTING DEMO BLOCKCHAIN TRANSACTION...');
+        this.addLog('info', 'EXECUTING DEMO BLOCKCHAIN TRANSACTION...');
+        this.addLog('warning', 'THIS IS A SIMULATION - NO REAL ETH SPENT!');
+        
+        await this.delay(3000);
+        
+        const fundingAmount = Math.round((Math.random() * 0.009 + 0.001) * 1000) / 1000; // 0.001-0.01
+        const txHash = '0x' + Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join('');
+        
+        this.updateCardStatus('disburse', 'completed', 
+            `DEMO TRANSACTION COMPLETED! HASH: ${txHash.substring(0, 10)}...`);
+        
+        this.updateCardStatus('audit', 'completed', 
+            `DEMO TRANSACTION RECORDED - SIMULATION COMPLETE`);
+        
+        this.addLog('info', 'DEMO BLOCKCHAIN TRANSACTION COMPLETED!');
+        this.addLog('info', `DEMO TRANSACTION HASH: ${txHash}`);
+        this.addLog('warning', 'THIS WAS A SIMULATION - NO REAL FUNDS MOVED!');
+        
+        this.stats.totalFunding += fundingAmount;
+        this.stats.transactions++;
+        this.updateStats();
+        
+        this.addLog('info', 'DEMO DISASTER MANAGEMENT SYSTEM TEST COMPLETED!');
     }
 
     async updateWalletBalance() {

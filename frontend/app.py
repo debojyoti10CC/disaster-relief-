@@ -10,6 +10,15 @@ import asyncio
 import json
 from datetime import datetime
 
+# Try to import flask-limiter, but make it optional
+try:
+    from flask_limiter import Limiter
+    from flask_limiter.util import get_remote_address
+    LIMITER_AVAILABLE = True
+except ImportError:
+    LIMITER_AVAILABLE = False
+    print("Warning: flask-limiter not available, rate limiting disabled")
+
 # Add parent directory to path to import disaster management system
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
@@ -24,6 +33,22 @@ except ImportError:
     print("Warning: Disaster management system not available, using mock data")
 
 app = Flask(__name__, static_folder='.', template_folder='.')
+
+# Setup rate limiting if available
+if LIMITER_AVAILABLE:
+    limiter = Limiter(
+        key_func=get_remote_address,
+        default_limits=["200 per hour"]
+    )
+    limiter.init_app(app)
+else:
+    # Create a dummy limiter decorator
+    class DummyLimiter:
+        def limit(self, *args, **kwargs):
+            def decorator(f):
+                return f
+            return decorator
+    limiter = DummyLimiter()
 
 # Global variables for agents
 watchtower = None
@@ -58,8 +83,8 @@ def initialize_agents():
         
         treasurer_config = {
             'heartbeat_interval': 30,
-            'min_funding_amount': 0.001,
-            'max_funding_amount': 0.01,
+            'min_funding_amount': 0.000001,  # Extremely small amount for testing
+            'max_funding_amount': 0.000005,  # Extremely small amount for testing
             'blockchain': {
                 'network_url': 'https://sepolia.infura.io/v3/1df86dfd23a442cc8609f6dbe66d5832',
                 'private_key': '0x847888bebc95f4ec43485b92093ae632e211c0d2a59d2ebf19a874c00a22144c',
@@ -181,7 +206,7 @@ def test_disaster():
                 'disaster_type': result.disaster_type.upper(),
                 'confidence': int(result.confidence * 100),
                 'severity': result.severity_score,
-                'coordinates': f"({result.location[0]}, {result.location[1]})"
+                'coordinates': f"({result.coordinates[0]}, {result.coordinates[1]})"
             })
         else:
             return jsonify({'status': 'no_disaster'})

@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 """
-Vercel-compatible Flask app for Disaster Management System
+Vercel API entry point for Disaster Management System
 """
 
 import sys
 import os
 
 # Add the project root to Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+project_root = os.path.dirname(os.path.dirname(__file__))
+sys.path.insert(0, project_root)
 
-# Import the Flask app from frontend
-from frontend.app import app
+# Import the Vercel-optimized Flask app
+from frontend.vercel_app import app
 
-# Vercel expects the app to be available as 'app'
+# Vercel handler function
+def handler(event, context):
+    return app
+
+# For local testing
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True)

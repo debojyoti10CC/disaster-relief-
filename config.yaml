@@ -2,7 +2,7 @@
 
 # Redis Configuration
 redis:
-  url: "redis://redis:6379"
+  url: "redis://localhost:6379"
 
 # Agent Configuration
 agents:

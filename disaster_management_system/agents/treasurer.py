@@ -142,13 +142,18 @@ class TreasurerAgent(BaseAgent):
         """Calculate funding amount based on verified event"""
         try:
             # Start with the recommended amount from auditor
-            base_amount = verified_event.funding_recommendation
+            base_amount = getattr(verified_event, 'funding_recommendation', self.min_funding_amount)
+            
+            # If base amount is 0 or very small, use minimum
+            if base_amount <= 0:
+                base_amount = self.min_funding_amount
             
             # Adjust based on verification score
-            verification_factor = verified_event.verification_score / 100.0
+            verification_factor = getattr(verified_event, 'verification_score', 80) / 100.0
             
             # Adjust based on human impact
-            impact_factor = min(2.0, verified_event.human_impact_estimate / 1000.0)
+            human_impact = getattr(verified_event, 'human_impact_estimate', 100)
+            impact_factor = min(2.0, human_impact / 1000.0)
             
             # Adjust based on disaster type
             disaster_multipliers = {
@@ -164,10 +169,13 @@ class TreasurerAgent(BaseAgent):
             # Calculate final amount
             final_amount = base_amount * verification_factor * impact_factor * disaster_factor
             
-            # Apply min/max limits
-            final_amount = max(self.min_funding_amount, min(self.max_funding_amount, final_amount))
+            # Ensure it's at least the minimum
+            final_amount = max(self.min_funding_amount, final_amount)
             
-            return round(final_amount, 4)  # Round to 4 decimal places
+            # Apply max limit
+            final_amount = min(self.max_funding_amount, final_amount)
+            
+            return round(final_amount, 6)  # Round to 6 decimal places for small amounts
             
         except Exception as e:
             self.logger.error(f"Error calculating funding amount: {e}")
